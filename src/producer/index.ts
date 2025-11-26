@@ -1,24 +1,24 @@
 import Redis from "ioredis";
-import { STREAM, MAX_STREAM_LENGTH } from "./config";
-import { type Item } from "./types";
+import { MAX_STREAM_LENGTH } from "../config";
+import { type Item } from "../types";
 import { faker } from "@faker-js/faker";
 import chalk from "chalk";
+import { parseProducerArgs } from "./args";
 
 const redis = new Redis();
-
-const args = process.argv;
-const count = parseInt(args[2] || "100", 10);
+const config = parseProducerArgs(process.argv.slice(2));
 
 /**
  * @description Produces a specified number of orders and adds them to the Redis stream.
  * @param count - The number of orders to produce.
  */
-async function produceOrders(count = 100) {
+async function produceOrders(stream: string, count: number) {
     for (let i = 1; i <= count; i++) {
         let r = Math.random() * 225;
         let g = Math.random() * 225;
         let b = Math.random() * 225;
         let formatter = chalk.rgb(r, g, b);
+
         const item: Item = {
             id: faker.string.alphanumeric({
                 length: 10,
@@ -31,7 +31,7 @@ async function produceOrders(count = 100) {
         };
 
         await redis.xadd(
-            STREAM,
+            stream,
             "MAXLEN",
             "~",
             MAX_STREAM_LENGTH,
@@ -52,4 +52,4 @@ async function produceOrders(count = 100) {
     await redis.quit();
 }
 
-produceOrders(count).catch(console.error);
+produceOrders(config.stream, config.count).catch(console.error);

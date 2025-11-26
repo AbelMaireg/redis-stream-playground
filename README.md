@@ -78,7 +78,7 @@ docker run --rm -p 6379:6379 redis:latest
 Generate *N* messages (default: 100):
 
 ```bash
-bun run src/producer.ts 500
+bun run src/producer.ts --stream orders:stream --count 500
 ```
 
 Example output:
