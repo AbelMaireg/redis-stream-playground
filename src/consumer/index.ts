@@ -89,7 +89,7 @@ async function reclaimStaleMessages() {
         const fields = {} as Record<string, string>;
 
         for (let i = 0; i < fieldsArr.length; i += 2) {
-            const key = parseInt(fieldsArr[i] as string);
+            const key = fieldsArr[i] as string;
             const value = fieldsArr[i + 1] as string;
             fields[key] = value;
         }
