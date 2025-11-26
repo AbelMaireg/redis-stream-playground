@@ -23,11 +23,8 @@ This project demonstrates:
   Displays real-time stream metrics, pending counts, and per-consumer stats (processed, pending, idle).
   Refreshes every second.
 
-* **Configurable via Environment Variables**
+* **Configurable via Environment Variables and Argumenets**
   Sensible defaults provided for a smooth start.
-
-* **Monitoring Streams and Groups Dynamically with Argumented Environments**
-  Workers auto-create the consumer group on first run if it doesn't exist.
 
 ---
 
@@ -44,8 +41,6 @@ This project demonstrates:
 
 | Variable            | Default                  | Description                                    |
 | ------------------- | ------------------------ | ---------------------------------------------- |
-| `STREAM`            | `orders:stream`          | Redis stream key                               |
-| `GROUP`             | `payment-workers`        | Consumer group name                            |
 | `REDIS_URL`         | `redis://localhost:6379` | Redis connection string                        |
 | `MAX_STREAM_LENGTH` | `10000`                  | Stream length cap using `XADD MAXLEN ~`        |
 | `RECLAIM_IDLE_MS`   | `120000`                 | Idle time before a message becomes reclaimable |
@@ -78,7 +73,7 @@ docker run --rm -p 6379:6379 redis:latest
 Generate *N* messages (default: 100):
 
 ```bash
-bun run src/producer.ts --stream orders:stream --count 500
+bun run src/producer --stream orders:stream --count 500
 ```
 
 Example output:
@@ -98,9 +93,10 @@ Finished producing 500 orders.
 Run one or more worker consumers:
 
 ```bash
-bun run src/worker.ts 1
-bun run src/worker.ts 2
-bun run src/worker.ts 3
+bun src/consumer -s orders:stream -g payment-workers -n worker-1
+bun src/consumer -s orders:stream -g payment-workers -n worker-2
+bun src/consumer -s orders:stream -g logging -n worker-3
+bun src/consumer -s orders:stream -g logging -n worker-4
 ```
 
 Example:
@@ -202,14 +198,6 @@ redis-cli DEL orders:stream $(redis-cli KEYS 'stats:processed:payment-workers:*'
 
 * **Messages not reclaimed**
   Confirm `RECLAIM_IDLE_MS` is below the actual processing time of failed/slow workers.
-
----
-
-## **Possible Extensions**
-
-* Persist processed items to **Postgres** (hinted by the repo name).
-* Add a **dead-letter stream** for repeated failures.
-* Integrate **Prometheus metrics** or an HTTP status endpoint.
 
 ---
 

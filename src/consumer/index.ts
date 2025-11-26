@@ -1,19 +1,20 @@
 import Redis from "ioredis";
-import { STREAM, GROUP, RECLAIM_IDLE_MS } from "./config";
+import { RECLAIM_IDLE_MS } from "../config";
 import {
     type Item,
     type StreamResponse,
     type XAutoClaimResponse,
-} from "./types";
+} from "../types";
 import chalk from "chalk";
+import { parseConsumerArgs } from "./args";
 
 const redis = new Redis();
-const args = process.argv;
-const consumerName = `worker-${args[2] || process.pid}`;
+const args = process.argv.slice(2);
+const config = parseConsumerArgs(args);
 
 console.log(
     chalk.cyan(`Starting consumer`),
-    chalk.cyan(`'${consumerName}' in group '${GROUP}'`),
+    chalk.cyan(`'${config.name}' in group '${config.group}'`),
 );
 
 /**
@@ -21,8 +22,14 @@ console.log(
  */
 async function ensureConsumerGroup() {
     try {
-        await redis.xgroup("CREATE", STREAM, GROUP, "$", "MKSTREAM");
-        console.log(chalk.green(`Consumer group '${GROUP}' created.`));
+        await redis.xgroup(
+            "CREATE",
+            config.stream,
+            config.group,
+            "$",
+            "MKSTREAM",
+        );
+        console.log(chalk.green(`Consumer group '${config.group}' created.`));
     } catch (err: any) {
         if (!err.message.includes("BUSYGROUP")) throw err;
     }
@@ -45,18 +52,20 @@ async function processMessage(id: string, fields: Record<string, string>) {
     const exists = await redis.exists(processedKey);
     if (exists) {
         console.log(chalk.yellow(`Skipping duplicate payment: ${item.id}`));
-        await redis.xack(STREAM, GROUP, id);
+        await redis.xack(config.stream, config.group, id);
         return;
     }
 
-    const index = await redis.incr(`stats:processed:${GROUP}:${consumerName}`);
+    const index = await redis.incr(
+        `stats:processed:${config.group}:${config.name}`,
+    );
 
     console.log(
         chalk.green(`#${index}`.padEnd(6)),
         chalk.italic.yellow(`${item.name}`).padEnd(30),
     );
 
-    await redis.xack(STREAM, GROUP, id);
+    await redis.xack(config.stream, config.group, id);
 }
 
 /**
@@ -64,9 +73,9 @@ async function processMessage(id: string, fields: Record<string, string>) {
  */
 async function reclaimStaleMessages() {
     const result = (await redis.xautoclaim(
-        STREAM,
-        GROUP,
-        consumerName,
+        config.stream,
+        config.group,
+        config.name,
         RECLAIM_IDLE_MS,
         "0-0",
         "COUNT",
@@ -101,14 +110,14 @@ async function mainLoop() {
 
             const result = (await redis.xreadgroup(
                 "GROUP",
-                GROUP,
-                consumerName,
+                config.group,
+                config.name,
                 "COUNT",
                 10,
                 "BLOCK",
                 5000,
                 "STREAMS",
-                STREAM,
+                config.stream,
                 ">",
             )) as StreamResponse;
 
