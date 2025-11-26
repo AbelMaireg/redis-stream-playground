@@ -26,6 +26,9 @@ This project demonstrates:
 * **Configurable via Environment Variables**
   Sensible defaults provided for a smooth start.
 
+* **Monitoring Streams and Groups Dynamically with Argumented Environments**
+  Workers auto-create the consumer group on first run if it doesn't exist.
+
 ---
 
 ## **Prerequisites**
@@ -48,6 +51,7 @@ This project demonstrates:
 | `RECLAIM_IDLE_MS`   | `120000`                 | Idle time before a message becomes reclaimable |
 
 ---
+
 
 ## **Installation**
 
@@ -116,23 +120,41 @@ Workers automatically create the consumer group on first startup.
 Start the dashboard:
 
 ```bash
-bun run src/monitor.ts
+bun run src/monitor.ts --stream orders:stream --group payment-workers logging
 ```
 
 Sample excerpt:
 
 ```
-=== Redis Streams Live Dashboard ===
-Stream length     : 4,317 entries
-Group             : payment-workers
-Pending messages  : 12
-Last delivered ID : 1732569876543-0
-Active consumers  : 3
+=== Redis Streams Multi-Group Dashboard ===
 
-Consumer        │ Processed │ Pending │ Idle (s)
-worker-1        │      1523 │      3 │      12
-worker-2        │      1477 │      5 │       2
-worker-3        │       915 │      4 │       7
+orders:stream → Group: payment-workers
+Stream Length       : 1,048
+Pending Messages    : 0
+Last Delivered ID   : 1764144879753-0
+Active Consumers    : 2
+
+   --- Consumer Stats ---
+
+   Consumer     │ Processed │ Pending │ Idle (s)
+   ───────────────────────────────────────────────
+   worker-2     │       527 │       0 │      3
+   worker-1     │       521 │       0 │      3
+
+orders:stream → Group: logging
+Stream Length       : 1,048
+Pending Messages    : 0
+Last Delivered ID   : 1764144879753-0
+Active Consumers    : 2
+
+   --- Consumer Stats ---
+
+   Consumer     │ Processed │ Pending │ Idle (s)
+   ───────────────────────────────────────────────
+   worker-4     │       531 │       0 │      2
+   worker-3     │       514 │       0 │      3
+
+Updated: 11:20:24 AM
 ```
 
 ---
